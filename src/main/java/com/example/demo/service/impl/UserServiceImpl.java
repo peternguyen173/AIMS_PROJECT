@@ -86,12 +86,20 @@ public class UserServiceImpl implements UserDetailsService, UserService {
         AuthResponseDTO authResponseDTO = new AuthResponseDTO();
         String username = authRequestDTO.getEmail();
         String password = authRequestDTO.getPassword();
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new BadRequestException("User does not exist"));
+
+        // Check if the user is unverified
+        if (user.getStatus() == UserStatus.UNVERIFIED) {
+            throw new BadRequestException("User account is unverified. Please verify your account to log in.");
+        }
         Authentication authentication = authenticate(username, password);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String accessToken = jwtTokenProvider.generateToken(authentication);
         authResponseDTO.setStatus(true);
         authResponseDTO.setJwt(accessToken);
-        authRequestDTO.setEmail(username);
+        authResponseDTO.setEmail(username);
+        authResponseDTO.setRole(authentication.getAuthorities().toString());
         return authResponseDTO;
     }
     private Authentication authenticate(String username, String password) throws BadRequestException {
